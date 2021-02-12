@@ -1,8 +1,8 @@
 # Undelivered
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/undelivered`. To experiment with that code, run `bin/console` for an interactive prompt.
+Ruby gem to manage undelivered/ read status of ActiveRecord objects
 
-TODO: Delete this and the text above, and describe your gem
+Most of the logic shamelessly stolen from `unread` gem
 
 ## Installation
 
@@ -16,23 +16,95 @@ And then execute:
 
     $ bundle install
 
-Or install it yourself as:
+Install migration yourself as (as of now):
 
-    $ gem install undelivered
+```ruby
+class CreateUndeliveredReadMarks < ActiveRecord::Migration[6.1]
+  def change
+    create_table :undelivered_read_marks do |t|
+      t.references :reader,   polymorphic: { null: false }
+      t.references :readable, polymorphic: { null: false }
+      t.integer    :status,   index: true
+      t.datetime   :timestamp
+
+      t.timestamps
+    end
+
+    add_index :undelivered_read_marks, [:reader_id, :reader_type, :readable_type, :readable_id, :status], name: 'undelivered_read_marks_reader_readable_status_index', unique: true
+  end
+end
+```
+
+Run migration:
+
+    $ rails db:migrate
 
 ## Usage
 
-TODO: Write usage instructions here
+By following idea from [`this`](https://github.com/ledermann/unread/issues/99) issue of `unread`
 
-## Development
+```ruby
+class User < ApplicationRecord
+  acts_as_reader
+end
 
-After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+class Conversation < ApplicationRecord
+  acts_as_readable on: :updated_at
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+  has_many :messages, dependent: :destroy
+  
+  def undelivered_messages(reader)
+    chain = messages
+    rm = find_read_mark(reader, :delivered) # this method comes from this gem
+    if rm.present?
+      chain = chain.where('created_at > ?', rm.timestamp)
+    end
+    return chain
+  end
+  
+  def unread_messages(reader)
+    chain = messages
+    rm = find_read_mark(reader, :read)
+    if rm.present?
+      chain = chain.where('created_at > ?', rm.timestamp)
+    end
+    return chain
+  end
+end
+
+class Message < ApplicationRecord
+  belongs_to :conversation, touch: true
+end
+```
+
+```ruby
+# Suppose we got 1 users and 1 conversation
+current_user = User.find(1)
+
+conversation = Conversation.find(1)
+
+message1 = conversation.messages.create
+message2 = conversation.messages.create
+
+# Get undelivered messages for current_user, using method of conversation class
+conversation.undelivered_messages(current_user)
+# => [ message1, message2 ]
+
+# Mark them as delivered for current_user
+conversation.mark_as_delivered_for!(current_user)
+
+
+# Get unread messages for current_user
+conversation.undelivered_messages(current_user)
+# => [ message1, message2 ]
+
+# Mark them as read for current_user
+conversation.mark_as_read_for!(current_user)
+```
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/undelivered. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/undelivered/blob/master/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at https://github.com/vivekmiyani/undelivered. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/vivekmiyani/undelivered/blob/master/CODE_OF_CONDUCT.md).
 
 ## License
 
@@ -40,4 +112,4 @@ The gem is available as open source under the terms of the [MIT License](https:/
 
 ## Code of Conduct
 
-Everyone interacting in the Undelivered project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/undelivered/blob/master/CODE_OF_CONDUCT.md).
+Everyone interacting in the Undelivered project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/vivekmiyani/undelivered/blob/master/CODE_OF_CONDUCT.md).
