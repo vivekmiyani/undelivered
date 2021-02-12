@@ -41,7 +41,7 @@ Run migration:
 
 ## Usage
 
-By following idea from [`this`](https://github.com/ledermann/unread/issues/99) issue of `unread`
+By following idea from [`this`](https://github.com/ledermann/unread/issues/99) issue of `unread` gem.
 
 ```ruby
 class User < ApplicationRecord
@@ -55,7 +55,7 @@ class Conversation < ApplicationRecord
   
   def undelivered_messages(reader)
     chain = messages
-    rm = find_read_mark(reader, :delivered) # this method comes from this gem
+    rm = find_read_mark(reader, :delivered) # this method comes from `undelivered` gem
     if rm.present?
       chain = chain.where('created_at > ?', rm.timestamp)
     end
@@ -95,7 +95,7 @@ conversation.mark_as_delivered_for!(current_user)
 
 
 # Get unread messages for current_user
-conversation.undelivered_messages(current_user)
+conversation.unread_messages(current_user)
 # => [ message1, message2 ]
 
 # Mark them as read for current_user
