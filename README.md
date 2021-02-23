@@ -16,7 +16,7 @@ And then execute:
 
     $ bundle install
 
-Install migration yourself as (as of now):
+Install migration yourself (as of now):
 
 ```ruby
 class CreateUndeliveredReadMarks < ActiveRecord::Migration[6.1]

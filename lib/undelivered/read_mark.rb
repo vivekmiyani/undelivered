@@ -42,8 +42,6 @@ module Undelivered
     module ClassMethods
   
       def acts_as_reader
-        include ReadMark::InstanceMethods
-  
         has_many :read_marks, class_name: 'Undelivered::ReadMark', as: :reader, dependent: :destroy
       end
   
@@ -63,8 +61,4 @@ module Undelivered
   def self.table_name_prefix
     'undelivered_'
   end
-end
-
-ActiveSupport.on_load(:active_record) do
-  extend Undelivered::ReadMark::ClassMethods
 end
